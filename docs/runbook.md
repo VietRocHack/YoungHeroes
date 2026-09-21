@@ -60,6 +60,23 @@ curl -s \
   -H "Authorization: Bearer $TOKEN" -H "X-Goog-User-Project: vietrochack-lab"
 ```
 
+**Already requested (2026-09-21).** `youngheroes.vietrochack.com` currently
+points at **Vercel** (leftover from the old hackathon deploy), not Firebase —
+whoever manages `vietrochack.com` DNS (Namecheap, per the migration guide)
+needs to make these exact changes:
+
+| Action | Type | Name | Value |
+|---|---|---|---|
+| **Remove** | CNAME | `youngheroes` | `21c96fb19f0274a1.vercel-dns-017.com` |
+| **Add** | CNAME | `youngheroes` | `vietrochack-youngheroes.web.app` |
+| **Add** | TXT | `_acme-challenge.youngheroes` | `3M2mYsrw4sVY8B9IOXb7HrOjeD0bGx1xBhLky6Xjazo` |
+
+After the records are updated, poll the same GET above: `hostState` goes
+`HOST_MISMATCH` → `HOST_ACTIVE`, `ownershipState` goes `OWNERSHIP_MISSING` →
+`OWNERSHIP_ACTIVE`. Usually resolves well under 24h. (If the TXT/CNAME values
+above ever need re-checking, re-run the GET — Google may rotate the exact
+challenge token if too much time passes before DNS is updated.)
+
 ## Budget alert
 
 ```bash

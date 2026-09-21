@@ -21,7 +21,7 @@ team-owned deploy with no per-project hackathon budget.
 
 Move every AI call to Gemini:
 
-- **Dispatcher**: `gemini-2.5-flash` with a JSON response schema
+- **Dispatcher**: `gemini-flash-latest` with a JSON response schema
   (`{message, isFinished, isPrankCall}`) — see
   `backend/src/services/dispatcher.py`. OpenAI's Assistants API has no
   equivalent stateful "thread" primitive, so conversation history moves to
@@ -29,14 +29,14 @@ Move every AI call to Gemini:
   itself (system instructions/safety rules) previously lived only in OpenAI's
   dashboard config, not in either repo, so it's been rewritten from scratch
   in `dispatcher.py`'s `SYSTEM_INSTRUCTION`.
-- **TTS**: `gemini-2.5-flash-preview-tts`, which returns raw 16-bit PCM audio
+- **TTS**: `gemini-3.1-flash-tts-preview`, which returns raw 16-bit PCM audio
   that `backend/src/services/voice.py` wraps into a WAV container before
   streaming back (the frontend expects a playable audio file, same as the
   old OpenAI TTS response).
 - **STT**: sending the recorded audio directly to Gemini as a multimodal
   `generate_content` call with a "transcribe exactly" prompt, instead of a
   separate Whisper call.
-- **Quiz images**: `gemini-2.5-flash-image`, generated once offline — see
+- **Quiz images**: `gemini-3.1-flash-image`, generated once offline — see
   `0003-quiz-images-pregenerated.md`.
 
 ## Consequences

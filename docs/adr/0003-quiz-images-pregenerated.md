@@ -17,7 +17,7 @@ mini-games in place rather than build a new page.
 ## Decision
 
 Generate all 23 images once with `backend/scripts/generate_quiz_assets.py`
-(Gemini's `gemini-2.5-flash-image` model, one consistent kid-friendly
+(Gemini's `gemini-3.1-flash-image` model, one consistent kid-friendly
 illustration-style prompt prefix — see `backend/src/services/quiz.py`), and
 commit the resulting PNGs into `frontend/public/assets/generated/`, exactly
 like the stock images they replace. There is no live `/api/quiz/...`
