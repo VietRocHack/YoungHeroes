@@ -52,12 +52,19 @@ export async function startMicCapture(onChunk) {
   processor.connect(silentGain);
   silentGain.connect(audioContext.destination);
 
+  let stopped = false;
   return function stop() {
+    // handleEndCall and the component-unmount cleanup can both call this —
+    // AudioContext.close() throws InvalidStateError on a second call.
+    if (stopped) return;
+    stopped = true;
     processor.disconnect();
     source.disconnect();
     silentGain.disconnect();
     stream.getTracks().forEach((track) => track.stop());
-    audioContext.close();
+    if (audioContext.state === "running" || audioContext.state === "suspended") {
+      audioContext.close();
+    }
   };
 }
 
