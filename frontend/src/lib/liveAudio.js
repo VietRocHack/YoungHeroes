@@ -123,5 +123,12 @@ export function createPcmPlayer() {
     }
   }
 
-  return { enqueue, clear, close };
+  // Resolves once everything queued so far has finished playing — used to let
+  // the dispatcher's goodbye play out before leaving the call screen.
+  function whenDrained() {
+    const remainingMs = Math.max(0, nextStartTime - audioContext.currentTime) * 1000;
+    return new Promise((resolve) => setTimeout(resolve, remainingMs));
+  }
+
+  return { enqueue, clear, close, whenDrained };
 }

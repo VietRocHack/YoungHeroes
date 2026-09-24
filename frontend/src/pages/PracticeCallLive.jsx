@@ -28,6 +28,7 @@ export default function PracticeCallLive() {
   const stopMicRef = useRef(null);
   const pcmPlayerRef = useRef(null);
   const endedRef = useRef(false);
+  const endResultRef = useRef(null);
   const timerRef = useRef(0);
 
   useEffect(() => {
@@ -84,7 +85,13 @@ export default function PracticeCallLive() {
             if (message.type === "interrupted") {
               pcmPlayerRef.current?.clear();
             } else if (message.type === "ended") {
-              finishCall({ naturalEnd: message.naturalEnd, prankCall: message.isPrankCall });
+              const result = { naturalEnd: message.naturalEnd, prankCall: message.isPrankCall };
+              // The server closes the socket right after this — mark the
+              // result now so onclose's fallback can't overwrite it, then let
+              // the queued goodbye audio finish before leaving the screen.
+              endResultRef.current = result;
+              stopMicRef.current?.();
+              pcmPlayerRef.current.whenDrained().then(() => finishCall(result));
             }
             return;
           }
@@ -96,8 +103,9 @@ export default function PracticeCallLive() {
         };
 
         ws.onclose = () => {
-          // A clean end already navigated via the "ended" message above; an
+          // A clean end is handled via the "ended" message above; an
           // unexpected drop still needs to land the child somewhere sane.
+          if (endResultRef.current) return;
           finishCall({ naturalEnd: false, prankCall: false });
         };
       } catch (err) {
