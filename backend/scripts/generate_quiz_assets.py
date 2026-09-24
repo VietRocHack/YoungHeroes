@@ -15,17 +15,30 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from src.services.quiz import ALL_QUIZ_IMAGES, generate_image  # noqa: E402
+from src.services.quiz import (  # noqa: E402
+    COMMUNICATE_OPTION_IMAGES,
+    ICON_STYLE_PREFIX,
+    RECOGNIZE_SCENARIO_IMAGES,
+    SCENE_STYLE_PREFIX,
+    generate_image,
+)
 
 OUTPUT_DIR = pathlib.Path(__file__).resolve().parents[2] / "frontend" / "public" / "assets" / "generated"
 
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    for filename, prompt in ALL_QUIZ_IMAGES.items():
+    jobs = [
+        (filename, SCENE_STYLE_PREFIX + subject)
+        for filename, subject in RECOGNIZE_SCENARIO_IMAGES.items()
+    ] + [
+        (filename, ICON_STYLE_PREFIX + subject)
+        for filename, subject in COMMUNICATE_OPTION_IMAGES.items()
+    ]
+    for filename, styled_prompt in jobs:
         out_path = OUTPUT_DIR / filename
         print(f"Generating {filename} ...")
-        image_bytes = generate_image(prompt)
+        image_bytes = generate_image(styled_prompt)
         out_path.write_bytes(image_bytes)
         print(f"  wrote {out_path} ({len(image_bytes)} bytes)")
         time.sleep(1)  # be gentle with rate limits
