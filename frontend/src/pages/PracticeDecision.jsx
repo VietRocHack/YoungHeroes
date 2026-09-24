@@ -7,7 +7,7 @@ import BackButton from '../components/BackButton';
 export default function DecisionToCall() {
     const navigate = useNavigate();
     return (
-        <PhoneFrame className="items-center justify-between py-8 px-6">
+        <PhoneFrame className="items-center justify-center gap-16 py-8 px-6">
             <BackButton />
             <div className="text-center">
                 <h1 className="text-3xl font-semibold text-gray-800 mt-16">Having an Emergency?</h1>
