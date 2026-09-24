@@ -29,7 +29,7 @@ export default function LearnRecognize() {
   const scenarios = [
     {
       id: "home",
-      image: "/assets/generated/kitchen-smoke.png",
+      image: "/assets/generated/kitchen-smoke.jpg",
       description:
         "You're at home and you smell smoke coming from the kitchen. What do you do?",
       options: [
@@ -58,7 +58,7 @@ export default function LearnRecognize() {
     },
     {
       id: "kitchen",
-      image: "/assets/generated/stove-fire.png",
+      image: "/assets/generated/stove-fire.jpg",
       description: "You see a small fire on the stove. What's your next move?",
       options: [
         {
@@ -86,7 +86,7 @@ export default function LearnRecognize() {
     },
     {
       id: "window",
-      image: "/assets/generated/window-open.png",
+      image: "/assets/generated/window-open.jpg",
       description:
         "You've opened a window, but the smoke is getting worse. What now?",
       options: [
@@ -115,7 +115,7 @@ export default function LearnRecognize() {
     },
     {
       id: "water",
-      image: "/assets/generated/fire-worse.png",
+      image: "/assets/generated/fire-worse.jpg",
       description:
         "The water made the fire worse! It's spreading quickly. What do you do?",
       options: [
@@ -144,7 +144,7 @@ export default function LearnRecognize() {
     },
     {
       id: "outside",
-      image: "/assets/generated/see-fire.png",
+      image: "/assets/generated/see-fire.jpg",
       description:
         "You're safely outside, but the fire is still burning inside. What's the best action?",
       options: [
@@ -166,7 +166,7 @@ export default function LearnRecognize() {
     },
     {
       id: "extinguisher",
-      image: "/assets/generated/fire-worse.png",
+      image: "/assets/generated/fire-worse.jpg",
       description:
         "You couldn't find a fire extinguisher, and the fire is getting bigger. What now?",
       options: [
@@ -188,7 +188,7 @@ export default function LearnRecognize() {
     },
     {
       id: "wait",
-      image: "/assets/generated/burning-house.png",
+      image: "/assets/generated/burning-house.jpg",
       description:
         "You're waiting outside, but no one seems to know about the fire. What should you do?",
       options: [
@@ -210,7 +210,7 @@ export default function LearnRecognize() {
     },
     {
       id: "neighbor",
-      image: "/assets/generated/call-help.png",
+      image: "/assets/generated/call-help.jpg",
       description:
         "Your neighbor suggests calling the fire department. What's the best way to do that?",
       options: [],
@@ -363,18 +363,23 @@ export default function LearnRecognize() {
       </div>
 
       <div className="relative p-6 pt-2 flex justify-center items-center">
+        {/* Decorative images live as siblings of MotionButton, not children —
+            MotionButton's whileHover scale applies a CSS transform, and a
+            transformed ancestor becomes the containing block for any
+            absolutely-positioned descendants, which would otherwise yank
+            these images to a new position on hover. */}
+        <div className="absolute left-5 bottom-5 w-10 h-10 rounded-full">
+          <img src="/assets/star.png" alt="decoration" className="w-full h-full" />
+        </div>
         <MotionButton
           onClick={() => handleOptionClick(scenarios[current].call911)}
           className="w-40 border border-gray-100 bg-white text-gray-800 font-semibold py-3 px-4 rounded-full transition duration-300 ease-in-out shadow-xl"
         >
           Call 911
-          <div className="absolute left-5 bottom-5 w-10 h-10 rounded-full">
-            <img src="/assets/star.png" alt="decoration" className="w-full h-full" />
-          </div>
-          <div className="absolute right-5 bottom-7 w-24 h-24 rounded-full">
-            <img src="/assets/learnRec1.png" alt="decoration" className="w-full h-full" />
-          </div>
         </MotionButton>
+        <div className="absolute right-5 bottom-7 w-24 h-24 rounded-full">
+          <img src="/assets/learnRec1.png" alt="decoration" className="w-full h-full" />
+        </div>
       </div>
     </PhoneFrame>
   );

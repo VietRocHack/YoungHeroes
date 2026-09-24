@@ -10,37 +10,37 @@ const questions = [
   {
     question: "What's your emergency?",
     options: [
-      { text: 'Fire!', image: '/assets/generated/emergency-fire.png' },
-      { text: 'Medical Help', image: '/assets/generated/emergency-medical.png' },
-      { text: 'Danger!', image: '/assets/generated/emergency-danger.png' },
-      { text: 'Other', image: '/assets/generated/emergency-other.png' },
+      { text: 'Fire!', image: '/assets/generated/emergency-fire.jpg' },
+      { text: 'Medical Help', image: '/assets/generated/emergency-medical.jpg' },
+      { text: 'Danger!', image: '/assets/generated/emergency-danger.jpg' },
+      { text: 'Other', image: '/assets/generated/emergency-other.jpg' },
     ],
   },
   {
     question: "Where are you at right now?",
     options: [
-      { text: 'Home', image: '/assets/generated/location-home.png' },
-      { text: 'School', image: '/assets/generated/location-school.png' },
-      { text: 'Park', image: '/assets/generated/location-park.png' },
-      { text: 'Shopping Mall', image: '/assets/generated/location-mall.png' },
+      { text: 'Home', image: '/assets/generated/location-home.jpg' },
+      { text: 'School', image: '/assets/generated/location-school.jpg' },
+      { text: 'Park', image: '/assets/generated/location-park.jpg' },
+      { text: 'Shopping Mall', image: '/assets/generated/location-mall.jpg' },
     ],
   },
   {
     question: "Who is hurt?",
     options: [
-      { text: 'Just me', image: '/assets/generated/hurt-me.png' },
-      { text: 'My parents', image: '/assets/generated/hurt-parents.png' },
-      { text: 'My friends', image: '/assets/generated/hurt-friends.png' },
-      { text: 'My siblings', image: '/assets/generated/hurt-siblings.png' },
+      { text: 'Just me', image: '/assets/generated/hurt-me.jpg' },
+      { text: 'My parents', image: '/assets/generated/hurt-parents.jpg' },
+      { text: 'My friends', image: '/assets/generated/hurt-friends.jpg' },
+      { text: 'My siblings', image: '/assets/generated/hurt-siblings.jpg' },
     ],
   },
   {
     question: "What is the problem?",
     options: [
-      { text: 'I\'m stuck', image: '/assets/generated/problem-stuck.png' },
-      { text: 'I broke my legs', image: '/assets/generated/problem-broken-leg.png' },
-      { text: 'I am dizzy', image: '/assets/generated/problem-dizzy.png' },
-      { text: 'My stomach is hurt', image: '/assets/generated/problem-stomach.png' },
+      { text: 'I\'m stuck', image: '/assets/generated/problem-stuck.jpg' },
+      { text: 'I broke my legs', image: '/assets/generated/problem-broken-leg.jpg' },
+      { text: 'I am dizzy', image: '/assets/generated/problem-dizzy.jpg' },
+      { text: 'My stomach is hurt', image: '/assets/generated/problem-stomach.jpg' },
     ],
   }
 ];
