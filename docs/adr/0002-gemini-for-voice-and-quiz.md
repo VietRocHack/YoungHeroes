@@ -3,10 +3,12 @@
 ## Status
 
 Accepted. The dispatcher/TTS/STT portion below (`dispatcher.py`, `voice.py`,
-the cascaded `generate_content` calls) was superseded by
+the cascaded `generate_content` calls) is superseded as the default by
 [0005](0005-live-api-for-voice-call.md), which replaced it with one
-persistent Live API session — those files no longer exist. The quiz-images
-decision is unaffected and still current.
+persistent Live API session — but both flows are kept side by side behind a
+toggle (see 0005's status) until the Live flow gets real-device voice
+testing, so these files still exist and are still live code, not historical.
+The quiz-images decision is unaffected and still current.
 
 ## Context
 

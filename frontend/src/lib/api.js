@@ -14,6 +14,11 @@ const CLOUD_RUN_HOST = 'youngheroes-server-246457606106.us-central1.run.app';
 
 export const api = {
   newCall: () => `${base}/new_call`,
+  // Classic flow only (PracticeCallClassic.jsx) — see docs/adr/0005-live-api-for-voice-call.md.
+  tts: (text, callId) =>
+    `${base}/tts?text=${encodeURIComponent(text)}&callId=${encodeURIComponent(callId)}`,
+  getCallStates: (callId) => `${base}/get_call_states?callId=${encodeURIComponent(callId)}`,
+  stt: () => `${base}/stt`,
   callLive: (callId) => {
     const isLocalDev = window.location.hostname === 'localhost';
     const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';

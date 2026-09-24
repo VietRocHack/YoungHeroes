@@ -7,6 +7,19 @@ what shipped and what's still unverified (the migration plan's step 7 manual
 QA pass needs a real device with a working microphone, which wasn't
 available while building this; see the caveat at the end of this doc).
 
+Real-device testing immediately surfaced a genuine production outage the
+build-time verification missed: Firebase Hosting's rewrite proxy doesn't
+forward the WebSocket upgrade handshake to Cloud Run at all (confirmed 404 on
+both the custom domain and `*.web.app`), so the Live call was completely
+non-functional through the app's real URLs even though it worked when
+verified by connecting directly to Cloud Run. Fixed by having the frontend
+connect straight to the Cloud Run service for the WebSocket instead of
+through Hosting. Given that near-miss plus the still-unverified real-audio
+behavior, the classic cascade was restored (not left deleted) and both flows
+now live side by side behind a toggle on `PracticeDecision.jsx`
+(`frontend/src/lib/callMode.js`, defaulting to classic) — see
+`PracticeCallClassic.jsx` / `PracticeCallLive.jsx`.
+
 ## Context
 
 The current voice-call flow (`backend/src/main.py`, `services/dispatcher.py`,

@@ -1,21 +1,61 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 import PhoneFrame from '../components/PhoneFrame';
 import BackButton from '../components/BackButton';
+import { getCallMode, setCallMode } from '../lib/callMode';
+
+// See docs/adr/0005-live-api-for-voice-call.md — Live hasn't had real-device
+// microphone testing, so this toggle keeps the classic flow available as a
+// fallback instead of forcing everyone onto the unverified path.
+function CallModeToggle() {
+    const [mode, setMode] = useState(getCallMode());
+
+    const choose = (next) => {
+        setCallMode(next);
+        setMode(next);
+    };
+
+    return (
+        <div className="inline-flex rounded-full bg-gray-100 p-1 text-sm font-semibold">
+            <button
+                type="button"
+                onClick={() => choose('classic')}
+                className={`px-4 py-1.5 rounded-full transition duration-200 ${
+                    mode === 'classic' ? 'bg-white text-gray-800 shadow' : 'text-gray-500'
+                }`}
+            >
+                Classic
+            </button>
+            <button
+                type="button"
+                onClick={() => choose('live')}
+                className={`px-4 py-1.5 rounded-full transition duration-200 ${
+                    mode === 'live' ? 'bg-white text-gray-800 shadow' : 'text-gray-500'
+                }`}
+            >
+                Live (Beta)
+            </button>
+        </div>
+    );
+}
 
 export default function DecisionToCall() {
     const navigate = useNavigate();
     return (
         <PhoneFrame className="items-center justify-center gap-16 py-8 px-6">
             <BackButton />
-            <div className="text-center">
+            <div className="text-center flex flex-col items-center">
                 <h1 className="text-3xl font-semibold text-gray-800 mt-16">Having an Emergency?</h1>
                 <p className="text-lg text-gray-600 mt-4">
                     Press the button below
                     <br/>
                     help will come soon.
                 </p>
+                <div className="mt-6">
+                    <CallModeToggle />
+                </div>
             </div>
 
             <div className="relative w-64 h-64">

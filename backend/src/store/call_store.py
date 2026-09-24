@@ -17,6 +17,7 @@ def get_db() -> firestore.Client:
 def create_call(call_id: str) -> None:
     get_db().collection(COLLECTION).document(call_id).set(
         {
+            "history": [],
             "isFinished": False,
             "isPrankCall": False,
             "createdAt": datetime.now(timezone.utc),
@@ -27,6 +28,24 @@ def create_call(call_id: str) -> None:
 def get_call(call_id: str) -> Optional[dict]:
     doc = get_db().collection(COLLECTION).document(call_id).get()
     return doc.to_dict() if doc.exists else None
+
+
+def append_turn(call_id: str, user_text: str, dispatcher_message: str, is_finished: bool, is_prank_call: bool) -> None:
+    """Classic dispatcher flow only — see docs/adr/0005-live-api-for-voice-call.md."""
+    ref = get_db().collection(COLLECTION).document(call_id)
+    call = ref.get().to_dict() or {"history": []}
+    history = call.get("history", [])
+    history.append({"role": "user", "text": user_text})
+    history.append({"role": "model", "text": dispatcher_message})
+    ref.set(
+        {
+            "history": history,
+            "isFinished": is_finished,
+            "isPrankCall": is_prank_call,
+            "updatedAt": datetime.now(timezone.utc),
+        },
+        merge=True,
+    )
 
 
 def finish_live_call(call_id: str, is_prank_call: bool) -> None:
