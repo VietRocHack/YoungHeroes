@@ -2,7 +2,10 @@
 
 ## Status
 
-Proposed
+Accepted and implemented (2026-09-24) — see `docs/progress/20260924.md` for
+what shipped and what's still unverified (the migration plan's step 7 manual
+QA pass needs a real device with a working microphone, which wasn't
+available while building this; see the caveat at the end of this doc).
 
 ## Context
 
@@ -106,47 +109,48 @@ calls it, the backend closes the session and hands the frontend the result.
 
 Rough order, each step independently testable before moving to the next:
 
-1. **Backend: proof-of-concept Live session, no frontend changes yet.**
-   Write a throwaway script (like `backend/scripts/generate_quiz_assets.py`)
-   that opens `client.aio.live.connect(model="gemini-3.8-live", config=...)`,
-   streams a prerecorded 16kHz PCM WAV file's bytes in, and saves whatever
-   audio comes back. Confirms the model, auth, and audio format assumptions
-   before touching production code.
-2. **Backend: declare the `end_call` tool and port `SYSTEM_INSTRUCTION`.**
-   Adapt the existing dispatcher prompt (`services/dispatcher.py`) for a
-   continuous conversation instead of one-shot turns, and confirm the model
-   actually calls `end_call` with the right `is_prank_call` value in a few
-   manual test conversations via the step-1 script.
-3. **Backend: new WebSocket endpoint** (e.g. `WS /api/call/{callId}`) that,
-   on connect, opens the corresponding Live session, pipes inbound binary
-   WebSocket frames to it as audio, and pipes the model's outbound audio back
-   as binary frames. Keep writing the final summary to Firestore
-   (`call_store`) when `end_call` fires or the socket closes, so
-   `PracticeCallResult.jsx` keeps working unchanged.
-4. **Frontend: replace `MediaRecorder` capture with raw PCM streaming.** Use
-   `AudioContext` + `AudioWorkletNode` to capture mic input, downsample/
-   resample to 16kHz 16-bit PCM (the browser's mic is rarely natively 16kHz),
-   and send frames over the WebSocket from step 3. Play back the model's
-   24kHz PCM via `AudioContext` as it arrives, rather than waiting for a full
-   WAV blob.
-5. **Frontend: collapse the state machine.** Replace the
-   `START`/`DISPATCHER`/`USER`/`END` button-driven flow with: connect on
-   mount, stream continuously, show a simple "listening"/"speaking"
-   indicator driven by whatever activity signal the Live API exposes, and
-   handle the `end_call` result the same way `handleEndCall` does today.
-6. **Handle reconnection/errors.** Decide what happens on an unexpected
-   WebSocket close mid-call — likely: treat it the same as `handleEndCall`
-   with `naturalEnd: false`, matching today's non-natural-end behavior, since
-   silently retrying a live audio session mid-conversation is its own can of
-   worms.
-7. **Manual QA pass**: full call end-to-end on both desktop and mobile
-   (mobile browsers' audio autoplay/mic permission behavior is stricter and
-   more inconsistent than desktop — verify before considering this done),
-   plus the prank-call path specifically, since that's the one behavior
-   change most likely to regress silently if the tool-calling migration in
-   step 2 doesn't work exactly like the old JSON-schema field did.
-8. **Update `docs/adr/0002-gemini-for-voice-and-quiz.md`** to point at
-   `gemini-3.8-live` instead of the separate dispatcher/TTS models for the
-   call flow (the quiz's image generation model is unaffected), and remove
-   `TTS_MODEL`/`TTS_VOICE` from `backend/src/config.py` once
-   `services/voice.py` is deleted.
+1. **Done.** Backend proof-of-concept (`backend/scripts/live_poc.py`):
+   connects `client.aio.live.connect(model="gemini-3.8-live", ...)`, sends
+   text turns, confirmed streamed audio comes back correctly.
+2. **Done.** `end_call` tool + adapted `SYSTEM_INSTRUCTION` live in
+   `backend/src/services/live_call.py`. Verified via `live_poc.py` that the
+   model calls `end_call` with the right `is_prank_call` value.
+3. **Done.** `WS /api/call/{call_id}/live` in `backend/src/main.py`, relay
+   logic in `live_call.run_live_call`. Verified end-to-end (no real
+   microphone, but the full connect → stream → tool-call → Firestore write →
+   close path) via `backend/scripts/live_ws_test.py`.
+4. **Done.** `frontend/src/lib/liveAudio.js` — `ScriptProcessorNode`-based
+   mic capture downsampled to 16-bit PCM/16kHz, and a gapless PCM player for
+   the 24kHz output that also handles barge-in (`clear()` stops
+   already-scheduled audio immediately, not just future chunks — an actual
+   bug caught by testing the error path, not by inspection).
+5. **Done.** `PracticeCall.jsx` rewritten: connects on mount, no more
+   `START`/`DISPATCHER`/`USER`/`END` button state machine, just
+   `connecting`/`active`/`ended`/`error`.
+6. **Done, conservatively.** Any WebSocket close (mic permission denied,
+   unexpected drop, or the clean `end_call` path) routes through one
+   `finishCall`/`handleEndCall` path with a guard against double-navigation;
+   an unexpected drop reports `naturalEnd: false`, same as today's manual
+   hangup.
+7. **Not done — real device QA is still needed.** Everything above was
+   verified with real Gemini API calls but *no real microphone*: the
+   sandboxed environment this was built in blocks mic access outright. What
+   this means concretely hasn't been verified against a real voice:
+   - Whether `ScriptProcessorNode`'s downsampling quality is good enough for
+     Gemini to transcribe reliably (linear interpolation is crude).
+   - Real barge-in behavior/latency feel.
+   - Mobile browser mic-permission and audio-autoplay behavior specifically
+     (called out in the original plan as stricter/more inconsistent than
+     desktop).
+   - Whether the dispatcher actually waits for real conversation instead of
+     wrapping up early — a smoke test with zero user input saw the model call
+     `end_call` almost immediately after its own greeting, before asking
+     anything. That may just be reasonable behavior for total silence, but it
+     needs a real conversation to know for sure whether the prompt needs
+     tuning.
+   **Test this for real before calling the feature done.**
+8. **Done.** `docs/adr/0002-gemini-for-voice-and-quiz.md` marked superseded
+   for the dispatcher/TTS/STT portion; `services/dispatcher.py`,
+   `services/voice.py`, `models/schemas.py`, `/api/tts`, `/api/stt`, and
+   `/api/get_call_states` all deleted; `DISPATCHER_MODEL`/`TTS_MODEL`/
+   `TTS_VOICE` removed from `backend/src/config.py`.

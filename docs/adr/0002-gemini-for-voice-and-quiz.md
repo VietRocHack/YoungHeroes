@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted
+Accepted. The dispatcher/TTS/STT portion below (`dispatcher.py`, `voice.py`,
+the cascaded `generate_content` calls) was superseded by
+[0005](0005-live-api-for-voice-call.md), which replaced it with one
+persistent Live API session — those files no longer exist. The quiz-images
+decision is unaffected and still current.
 
 ## Context
 

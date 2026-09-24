@@ -3,233 +3,130 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { api } from "../lib/api";
+import { startMicCapture, createPcmPlayer } from "../lib/liveAudio";
 import PhoneFrame from "../components/PhoneFrame";
 import MotionButton from "../components/MotionButton";
 
-const states = {
-  START: "start",
-  DISPATCHER: "dispatcher",
-  USER: "user",
-  END: "end",
-  ERROR: "error",
-};
-
-const buttonInfo = {
-  start: "Start Call",
-  dispatcher: "Waiting for dispatcher...",
-  user: "Stop Recording",
-  end: "Call Ended",
-  error: "Error",
+// See docs/adr/0005-live-api-for-voice-call.md — this used to be a
+// record -> upload -> transcribe -> reply -> synthesize -> play cascade
+// driven by explicit "Start Call"/"Stop Recording" taps. Now it's a
+// persistent WebSocket streaming raw mic audio in and spoken audio back in
+// real time, with barge-in, so there's no more turn-by-turn button to press.
+const statusLabel = {
+  connecting: "Connecting...",
+  active: "Emergency Calling...",
+  ended: "Call Ended",
+  error: "Couldn't connect",
 };
 
 export default function PracticeCall() {
-  const [id, setId] = useState(null);
-  const [state, setState] = useState(states.START);
-  const [clickable, setClickable] = useState(true);
-  const [prankCall, setPrankCall] = useState(false);
-
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const finishedRef = useRef(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const audioBlobRef = useRef(null);
-  const textRef = useRef("");
-
-  const navigate = useNavigate();
+  const [status, setStatus] = useState("connecting");
   const [timer, setTimer] = useState(0);
+  const navigate = useNavigate();
+
+  const wsRef = useRef(null);
+  const stopMicRef = useRef(null);
+  const pcmPlayerRef = useRef(null);
+  const endedRef = useRef(false);
+  const timerRef = useRef(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimer((prevTimer) => prevTimer + 1);
+      timerRef.current += 1;
+      setTimer(timerRef.current);
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    const requestMicrophoneAccess = async () => {
+    let cancelled = false;
+
+    const finishCall = (result) => {
+      if (endedRef.current) return;
+      endedRef.current = true;
+      sessionStorage.setItem(
+        "callResult",
+        JSON.stringify({ duration: timerRef.current, naturalEnd: false, prankCall: false, ...result })
+      );
+      stopMicRef.current?.();
+      pcmPlayerRef.current?.close();
+      wsRef.current?.close();
+      navigate("/practice/call/result");
+    };
+
+    const connect = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        mediaRecorderRef.current = new MediaRecorder(stream);
+        const { data: callId } = await axios.get(api.newCall());
+        if (cancelled) return;
+
+        const ws = new WebSocket(api.callLive(callId));
+        ws.binaryType = "arraybuffer";
+        wsRef.current = ws;
+        pcmPlayerRef.current = createPcmPlayer();
+
+        ws.onopen = async () => {
+          if (cancelled) return;
+          try {
+            stopMicRef.current = await startMicCapture((chunk) => {
+              if (ws.readyState === WebSocket.OPEN) ws.send(chunk);
+            });
+            setStatus("active");
+          } catch (err) {
+            console.error("Microphone access denied", err);
+            setStatus("error");
+            ws.close();
+          }
+        };
+
+        ws.onmessage = (event) => {
+          if (typeof event.data === "string") {
+            const message = JSON.parse(event.data);
+            if (message.type === "interrupted") {
+              pcmPlayerRef.current?.clear();
+            } else if (message.type === "ended") {
+              finishCall({ naturalEnd: message.naturalEnd, prankCall: message.isPrankCall });
+            }
+            return;
+          }
+          pcmPlayerRef.current?.enqueue(event.data);
+        };
+
+        ws.onerror = (err) => {
+          console.error("Live call socket error", err);
+        };
+
+        ws.onclose = () => {
+          // A clean end already navigated via the "ended" message above; an
+          // unexpected drop still needs to land the child somewhere sane.
+          finishCall({ naturalEnd: false, prankCall: false });
+        };
       } catch (err) {
-        console.error("Microphone access denied", err);
+        console.error("Error starting call:", err);
+        if (!cancelled) setStatus("error");
       }
     };
 
-    requestMicrophoneAccess();
+    connect();
 
-    // Function to fetch the ID from the API
-    const fetchIdFromAPI = async () => {
-      try {
-        const response = await axios.get(api.newCall());
-        if (response.data) {
-          localStorage.setItem("uniqueId", response.data);
-          setId(response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching ID:", error);
-      }
+    return () => {
+      cancelled = true;
+      stopMicRef.current?.();
+      pcmPlayerRef.current?.close();
+      wsRef.current?.close();
     };
-
-    // Check if the ID already exists in localStorage
-    const storedId = localStorage.getItem("uniqueId");
-    if (storedId) {
-      setId(storedId);
-    } else {
-      fetchIdFromAPI();
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleStartCall = () => {
-    console.log("Starting call...");
-    setClickable(false);
-    setState(states.DISPATCHER);
-  };
-
-  const handleDispatcherCall = async (text) => {
-    try {
-      const response = await axios.get(api.tts(text, id), {
-        responseType: "arraybuffer",
-      });
-      if (response.data) {
-        console.log("Audio file received:", response.data);
-        const saveAudioFile = (audioData) => {
-          const blob = new Blob([audioData], { type: "audio/wav" });
-          const url = URL.createObjectURL(blob);
-          return url;
-        };
-
-        const audiourl = saveAudioFile(response.data);
-
-        const playaudio = new Audio(audiourl);
-        playaudio.play();
-
-        const waitForAudioToEnd = () => {
-          return new Promise((resolve) => {
-            playaudio.addEventListener("ended", resolve);
-          });
-        };
-
-        await waitForAudioToEnd();
-      }
-    } catch (error) {
-      setState(states.ERROR);
-      console.error("Error starting call:", error);
-    } finally {
-      var isEnding = false;
-      try {
-        const response = await axios.get(api.getCallStates(id));
-        if (response.data) {
-          console.log(response.data);
-          if (response.data[0]) {
-            isEnding = true;
-          }
-          if (response.data[1]) {
-            setPrankCall(true);
-          }
-        }
-      } catch (error) {
-        setState(states.ERROR);
-        console.error("Error getting call states:", error);
-      } finally {
-        if (isEnding) {
-          finishedRef.current = true;
-          setState(states.END);
-          localStorage.removeItem("uniqueId");
-        } else {
-          setState(states.USER);
-          startRecording();
-          setClickable(true);
-        }
-      }
-    }
-  };
-
-  const startRecording = () => {
-    if (mediaRecorderRef.current) {
-      console.log("Recording started");
-      audioChunksRef.current = [];
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
-
-        audioBlobRef.current = audioBlob;
-        setIsRecording(false);
-        textRef.current = await handleSpeechToText();
-
-        setState(states.DISPATCHER);
-        await handleDispatcherCall(textRef.current);
-      };
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  const handleSpeechToText = async () => {
-    try {
-      const formData = new FormData();
-      formData.append("audio", audioBlobRef.current);
-
-      const response = await axios.post(
-        api.stt(),
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      if (response.data) {
-        console.log("Speech to text result:", response.data);
-        return response.data;
-      }
-    } catch (error) {
-      console.error("Error converting speech to text:", error);
-    }
-  };
-
-  const handleClick = async () => {
-    switch (state) {
-      case states.START:
-        handleStartCall();
-        await handleDispatcherCall("<START>");
-        break;
-      case states.USER:
-        stopRecording();
-        setClickable(false);
-        console.log("Recording stopped");
-        console.log("Audio chunks:", audioChunksRef.current);
-        console.log("Audio Blob:", audioBlobRef.current);
-        break;
-    }
-  };
-
   const handleEndCall = () => {
+    if (endedRef.current) return;
+    endedRef.current = true;
     sessionStorage.setItem(
       "callResult",
-      JSON.stringify({
-        duration: timer,
-        naturalEnd: state === states.END,
-        prankCall,
-      })
+      JSON.stringify({ duration: timerRef.current, naturalEnd: false, prankCall: false })
     );
-    localStorage.removeItem("uniqueId");
+    stopMicRef.current?.();
+    pcmPlayerRef.current?.close();
+    wsRef.current?.close();
     navigate("/practice/call/result");
   };
 
@@ -247,7 +144,7 @@ export default function PracticeCall() {
         <div className="text-center mt-8">
           <h1 className="text-4xl text-black">911</h1>
           <h2 className="text-2xl font-semibold mt-1 text-red-400">
-            Emergency Calling...
+            {statusLabel[status]}
           </h2>
           <div className="text-xl text-red-400">{formatTime(timer)}</div>
         </div>
@@ -284,15 +181,6 @@ export default function PracticeCall() {
             </div>
           </div>
         </div>
-      </div>
-      <div className="p-6 pt-0 flex justify-center items-center">
-        <MotionButton
-          className="w-60 mb-8 bg-white text-gray-800 font-semibold py-3 px-4 rounded-full transition duration-300 ease-in-out shadow-xl"
-          onClick={handleClick}
-          disabled={!clickable}
-        >
-          {buttonInfo[state]}
-        </MotionButton>
       </div>
 
       <div className="p-6 pt-0 flex justify-center items-center">
