@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import PhoneFrame from "../components/PhoneFrame";
 import MotionButton from "../components/MotionButton";
+import BackButton from "../components/BackButton";
 
 const START_HEARTS = 10;
 
@@ -269,8 +270,9 @@ export default function LearnRecognize() {
 
   return (
     <PhoneFrame>
+      <BackButton />
       <div className="flex-1 p-6 flex flex-col">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 pl-10">
           <MotionButton onClick={() => speakDescription(scenarios[current].description)}
           className="bg-white hover:bg-gray-200 p-2 rounded-full">
             <Volume2 className="text-gray-600" size={24} />

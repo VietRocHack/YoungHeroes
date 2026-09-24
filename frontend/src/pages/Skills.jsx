@@ -2,12 +2,14 @@ import { useNavigate } from 'react-router-dom';
 
 import PhoneFrame from '../components/PhoneFrame';
 import MotionButton from '../components/MotionButton';
+import BackButton from '../components/BackButton';
 
 export default function Skills() {
     const navigate = useNavigate();
 
     return (
         <PhoneFrame>
+            <BackButton to="/" />
             <h1 className="text-3xl font-thin leading-tight text-center mt-8 text-black">
                 Explore skills to know
                 <br/>

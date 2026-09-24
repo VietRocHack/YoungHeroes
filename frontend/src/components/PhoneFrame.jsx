@@ -19,7 +19,7 @@ export default function PhoneFrame({ children, className = '' }) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className={`w-full min-h-screen sm:min-h-0 sm:w-[min(400px,100%)] sm:h-[min(812px,100dvh)] bg-white sm:rounded-3xl sm:shadow-lg sm:overflow-hidden flex flex-col ${className}`}
+        className={`relative w-full min-h-screen sm:min-h-0 sm:w-[min(400px,100%)] sm:h-[min(812px,100dvh)] bg-white sm:rounded-3xl sm:shadow-lg sm:overflow-hidden flex flex-col ${className}`}
       >
         {children}
       </motion.div>

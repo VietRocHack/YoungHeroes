@@ -1,11 +1,8 @@
 'use client'
 
-// Only shown on wider screens: the mobile "phone card" experience stays
-// exactly as it was, this just gives the desktop view something intentional
-// around the card instead of empty gray space.
 export default function Footer() {
   return (
-    <footer className="hidden sm:flex flex-col items-center text-xs text-gray-500 gap-1">
+    <footer className="flex flex-col items-center text-xs text-gray-500 gap-1 pb-4 sm:pb-0">
       <p>
         {'© '}
         {new Date().getFullYear()}{' '}

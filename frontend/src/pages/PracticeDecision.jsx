@@ -2,12 +2,13 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 import PhoneFrame from '../components/PhoneFrame';
-import MotionButton from '../components/MotionButton';
+import BackButton from '../components/BackButton';
 
 export default function DecisionToCall() {
     const navigate = useNavigate();
     return (
         <PhoneFrame className="items-center justify-between py-8 px-6">
+            <BackButton />
             <div className="text-center">
                 <h1 className="text-3xl font-semibold text-gray-800 mt-16">Having an Emergency?</h1>
                 <p className="text-lg text-gray-600 mt-4">
@@ -47,13 +48,6 @@ export default function DecisionToCall() {
                     </motion.div>
                 </div>
             </div>
-
-            <MotionButton
-                onClick={() => navigate(-1)}
-                className="w-[150px] py-3 px-4 text-lg font-bold bg-white mb-16 text-black rounded-full shadow-md hover:bg-gray-50 transition duration-300 ease-in-out"
-            >
-                Cancel
-            </MotionButton>
         </PhoneFrame>
     );
 }

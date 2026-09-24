@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 
 import PhoneFrame from '../components/PhoneFrame';
 import MotionButton from '../components/MotionButton';
+import BackButton from '../components/BackButton';
 
 const questions = [
   {
@@ -95,6 +96,7 @@ export default function Communicate() {
 
   return (
     <PhoneFrame>
+      <BackButton />
       <div className="flex-1 flex flex-col items-center p-6 space-y-6">
         <div className="text-4xl text-black">911 Emergency</div>
         <div className="text-xl text-black">{formatTime(timer)}</div>
@@ -109,33 +111,38 @@ export default function Communicate() {
         </motion.div>
         <div className="grid grid-cols-2 gap-4 w-full">
           {currentQuestion.options.map((option, index) => (
-            <motion.div
+            <div
               key={index}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              animate={selectedOption === index ? { scale: [1, 1.08, 1] } : {}}
-              transition={{ duration: 0.25 }}
-              className={`rounded-full flex items-center justify-center p-2 aspect-square border-2 overflow-hidden cursor-pointer ${
-                selectedOption === index ? 'border-green-500' : 'border-gray-300'
-              }`}
+              className="flex flex-col items-center gap-2 cursor-pointer"
               onClick={() => handleOptionClick(index)}
             >
-              <img
-                src={option.image}
-                alt={option.text}
-                className="w-[90%] h-[90%] object-cover rounded-full"
-              />
-            </motion.div>
+              <motion.div
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                animate={selectedOption === index ? { scale: [1, 1.08, 1] } : {}}
+                transition={{ duration: 0.25 }}
+                className={`w-full rounded-full flex items-center justify-center p-2 aspect-square border-2 overflow-hidden ${
+                  selectedOption === index ? 'border-green-500' : 'border-gray-300'
+                }`}
+              >
+                <img
+                  src={option.image}
+                  alt={option.text}
+                  className="w-[90%] h-[90%] object-cover rounded-full"
+                />
+              </motion.div>
+              <span
+                className={`text-sm font-semibold ${
+                  selectedOption === index ? 'text-green-600' : 'text-gray-700'
+                }`}
+              >
+                {option.text}
+              </span>
+            </div>
           ))}
         </div>
       </div>
-      <div className="flex justify-between p-6">
-        <MotionButton
-          onClick={() => navigate(-1)}
-          className="w-[150px] py-3 px-4 text-lg font-bold bg-white text-gray-800 rounded-full border border-gray-300 shadow-md hover:bg-gray-50 transition duration-300 ease-in-out"
-        >
-          Back
-        </MotionButton>
+      <div className="flex justify-center p-6">
         <MotionButton
           onClick={handleContinue}
           disabled={selectedOption === null}
