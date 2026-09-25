@@ -6,9 +6,8 @@ import PhoneFrame from '../components/PhoneFrame';
 import BackButton from '../components/BackButton';
 import { getCallMode, setCallMode } from '../lib/callMode';
 
-// See docs/adr/0005-live-api-for-voice-call.md — Live hasn't had real-device
-// microphone testing, so this toggle keeps the classic flow available as a
-// fallback instead of forcing everyone onto the unverified path.
+// See docs/adr/0005-live-api-for-voice-call.md — Live is no longer labeled
+// beta, but the classic flow stays available as a fallback.
 function CallModeToggle() {
     const [mode, setMode] = useState(getCallMode());
 
@@ -35,7 +34,7 @@ function CallModeToggle() {
                     mode === 'live' ? 'bg-white text-gray-800 shadow' : 'text-gray-500'
                 }`}
             >
-                Live (Beta)
+                Live
             </button>
         </div>
     );

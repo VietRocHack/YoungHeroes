@@ -18,7 +18,7 @@ import logging
 from fastapi import WebSocket
 from google.genai import types
 
-from .. import config
+from .. import config, guards
 from ..store import call_store
 from .gemini_client import get_client
 
@@ -95,11 +95,21 @@ async def _relay_from_client(websocket: WebSocket, session, stop_event: asyncio.
     PracticeCall.jsx's "End Call" button â€” same as today's handleEndCall."""
     try:
         while not stop_event.is_set():
-            message = await websocket.receive()
+            # The browser streams mic audio nonstop (silence included), so a
+            # long gap means the client stopped sending — end the call rather
+            # than hold a paid Gemini session open for nobody.
+            try:
+                message = await asyncio.wait_for(websocket.receive(), timeout=config.LIVE_IDLE_SECONDS)
+            except asyncio.TimeoutError:
+                logger.info("Live call idle for %ss, ending", config.LIVE_IDLE_SECONDS)
+                return
             if message.get("type") == "websocket.disconnect":
                 return
             data = message.get("bytes")
             if data is not None:
+                if len(data) > config.LIVE_MAX_FRAME_BYTES:
+                    logger.warning("Dropping oversized %d-byte audio frame", len(data))
+                    return
                 await session.send_realtime_input(
                     audio=types.Blob(data=data, mime_type=_INPUT_MIME_TYPE)
                 )
@@ -177,6 +187,17 @@ async def _relay_from_model(
 
 
 async def run_live_call(websocket: WebSocket, call_id: str) -> None:
+    # Abuse checks before accepting, so a rejected socket never costs a Gemini
+    # session — see docs/adr/0006-abuse-prevention.md. The claim also means
+    # one /api/new_call (App Check + rate limited) buys exactly one session.
+    if not guards.is_allowed_origin(websocket):
+        logger.warning("Rejected Live call from origin %r", websocket.headers.get("origin"))
+        await websocket.close(code=1008)
+        return
+    if not await asyncio.to_thread(call_store.claim_live_session, call_id):
+        await websocket.close(code=1008)
+        return
+
     await websocket.accept()
     stop_event = asyncio.Event()
     is_prank_call = False
@@ -192,9 +213,15 @@ async def run_live_call(websocket: WebSocket, call_id: str) -> None:
             client_task = asyncio.create_task(_relay_from_client(websocket, session, stop_event))
             model_task = asyncio.create_task(_relay_from_model(websocket, session, call_id, stop_event))
 
+            # Hard cap on call length, under Cloud Run's --timeout so we end
+            # the call (and tell the frontend) before Cloud Run drops the socket.
             done, pending = await asyncio.wait(
-                [client_task, model_task], return_when=asyncio.FIRST_COMPLETED
+                [client_task, model_task],
+                timeout=config.LIVE_MAX_CALL_SECONDS,
+                return_when=asyncio.FIRST_COMPLETED,
             )
+            if not done:
+                logger.info("Live call %s hit the %ss limit", call_id, config.LIVE_MAX_CALL_SECONDS)
             stop_event.set()
             for task in pending:
                 task.cancel()

@@ -89,6 +89,48 @@ gcloud billing budgets create \
   --project=vietrochack-lab
 ```
 
+## Abuse prevention
+
+See `docs/adr/0006-abuse-prevention.md`. Rate limits and session limits live
+in code (`backend/src/config.py`, overridable via env vars). These parts are
+console setup:
+
+- **Gemini spend cap.** In AI Studio (aistudio.google.com), open the **Spend**
+  page, select the project that owns the Gemini key, find **Monthly spend
+  cap**, click **Edit spend cap**, and save. Enforcement lags by about 10
+  minutes, so set the cap below the most you can afford.
+- **Restrict the Gemini API key.** In Cloud Console → APIs & Services →
+  Credentials, open the key → **API restrictions** → **Restrict key** →
+  choose only **Generative Language API** → Save. Leave application
+  restrictions at None: the key is only used server-side, from Cloud Run.
+- **Firestore TTL for rate-limit counters (optional cleanup):**
+  ```bash
+  gcloud firestore fields ttls update expiresAt \
+    --collection-group=rateLimits --enable-ttl \
+    --database=youngheroes --project=vietrochack-lab
+  ```
+- **Turning on App Check:**
+  1. Firebase console → Project settings → add a **Web app** if there
+     isn't one yet. Note its `apiKey` and `appId`.
+  2. Cloud Console → Security → reCAPTCHA → create a **Website** key for
+     `youngheroes.vietrochack.com`, `vietrochack-youngheroes.web.app`,
+     `vietrochack-youngheroes.firebaseapp.com` (and `localhost` if needed).
+  3. Firebase console → App Check → register the web app with the
+     **reCAPTCHA Enterprise** provider and that site key.
+  4. GitHub repo → Settings → Variables → add `VITE_FIREBASE_API_KEY`,
+     `VITE_FIREBASE_APP_ID`, `VITE_FIREBASE_PROJECT_ID` (`vietrochack-lab`)
+     and `VITE_RECAPTCHA_SITE_KEY`. For local dev, put them in
+     `frontend/.env.local`.
+  5. Deploy and confirm `/api/new_call` requests carry an
+     `X-Firebase-AppCheck` header (App Check console metrics should show
+     verified requests).
+  6. Grant the Cloud Run service account the **Firebase App Check Token
+     Verifier** role (`roles/firebaseappcheck.tokenVerifier`), which the
+     `consume=True` replay check needs. Then enforce:
+     `gcloud run services update youngheroes-server --region=us-central1
+     --update-env-vars=APP_CHECK_ENFORCE=true --project=vietrochack-lab`.
+     Later `gcloud run deploy` runs keep existing env vars, so this persists.
+
 ## CI/CD (GitHub Actions, Workload Identity Federation)
 
 Service account `gh-actions-deploy-youngheroes`, a new OIDC provider named

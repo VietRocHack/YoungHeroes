@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { api } from "../lib/api";
+import { appCheckHeaders } from "../lib/appCheck";
 import { startMicCapture, createPcmPlayer } from "../lib/liveAudio";
 import PhoneFrame from "../components/PhoneFrame";
 import MotionButton from "../components/MotionButton";
@@ -57,7 +58,7 @@ export default function PracticeCallLive() {
 
     const connect = async () => {
       try {
-        const { data: callId } = await axios.get(api.newCall());
+        const { data: callId } = await axios.get(api.newCall(), { headers: await appCheckHeaders() });
         if (cancelled) return;
 
         const ws = new WebSocket(api.callLive(callId));

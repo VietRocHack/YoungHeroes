@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { api } from "../lib/api";
+import { appCheckHeaders } from "../lib/appCheck";
 import PhoneFrame from "../components/PhoneFrame";
 import MotionButton from "../components/MotionButton";
 
@@ -63,12 +64,13 @@ export default function PracticeCallClassic() {
 
     requestMicrophoneAccess();
 
-    // Function to fetch the ID from the API
+    // Always a fresh ID: the backend only honors recently issued, unfinished
+    // call IDs (docs/adr/0006-abuse-prevention.md), so reusing one left over
+    // from an abandoned call would just get rejected.
     const fetchIdFromAPI = async () => {
       try {
-        const response = await axios.get(api.newCall());
+        const response = await axios.get(api.newCall(), { headers: await appCheckHeaders() });
         if (response.data) {
-          localStorage.setItem("uniqueId", response.data);
           setId(response.data);
         }
       } catch (error) {
@@ -76,13 +78,7 @@ export default function PracticeCallClassic() {
       }
     };
 
-    // Check if the ID already exists in localStorage
-    const storedId = localStorage.getItem("uniqueId");
-    if (storedId) {
-      setId(storedId);
-    } else {
-      fetchIdFromAPI();
-    }
+    fetchIdFromAPI();
   }, []);
 
   const handleStartCall = () => {
@@ -140,7 +136,6 @@ export default function PracticeCallClassic() {
         if (isEnding) {
           finishedRef.current = true;
           setState(states.END);
-          localStorage.removeItem("uniqueId");
         } else {
           setState(states.USER);
           startRecording();
@@ -188,6 +183,7 @@ export default function PracticeCallClassic() {
     try {
       const formData = new FormData();
       formData.append("audio", audioBlobRef.current);
+      formData.append("callId", id);
 
       const response = await axios.post(
         api.stt(),
@@ -232,7 +228,6 @@ export default function PracticeCallClassic() {
         prankCall,
       })
     );
-    localStorage.removeItem("uniqueId");
     navigate("/practice/call/result");
   };
 

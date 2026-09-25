@@ -1,8 +1,9 @@
 import uuid
 
-from fastapi import FastAPI, File, Query, UploadFile, WebSocket
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket
 from fastapi.responses import JSONResponse, Response
 
+from . import config, guards
 from .services import dispatcher, live_call, voice
 from .store import call_store
 
@@ -15,7 +16,12 @@ def root():
 
 
 @app.get("/api/new_call")
-def new_call():
+def new_call(request: Request):
+    # Every paid endpoint below requires a call ID from here, so this is the
+    # one place that needs App Check and rate limiting — see
+    # docs/adr/0006-abuse-prevention.md.
+    guards.verify_app_check(request)
+    guards.enforce_new_call_rate_limit(request)
     call_id = str(uuid.uuid4())
     call_store.create_call(call_id)
     return Response(content=call_id, media_type="text/plain")
@@ -31,7 +37,10 @@ async def call_live(websocket: WebSocket, call_id: str):
 
 
 @app.get("/api/tts")
-def tts(text: str = Query(...), callId: str = Query(...)):
+def tts(text: str = Query(..., max_length=config.CLASSIC_MAX_TEXT_CHARS), callId: str = Query(...)):
+    call = guards.require_open_call(callId)
+    if len(call.get("history", [])) // 2 >= config.CLASSIC_MAX_TURNS:
+        raise HTTPException(status_code=403, detail="Call turn limit reached")
     turn = dispatcher.run_turn(callId, text)
     audio_bytes = voice.synthesize_speech(turn.message)
     return Response(content=audio_bytes, media_type="audio/wav")
@@ -44,8 +53,11 @@ def get_call_states(callId: str = Query(...)):
 
 
 @app.post("/api/stt")
-async def stt(audio: UploadFile = File(...)):
-    audio_bytes = await audio.read()
+async def stt(audio: UploadFile = File(...), callId: str = Form(...)):
+    guards.require_open_call(callId)
+    audio_bytes = await audio.read(config.STT_MAX_UPLOAD_BYTES + 1)
+    if len(audio_bytes) > config.STT_MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Recording too long")
     mime_type = audio.content_type or "audio/webm"
     text = voice.transcribe_audio(audio_bytes, mime_type)
     return Response(content=text, media_type="text/plain")

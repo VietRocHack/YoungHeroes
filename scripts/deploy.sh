@@ -30,6 +30,9 @@ gcloud run deploy "$SERVICE_NAME" \
   --source=backend \
   --region "$REGION" \
   --allow-unauthenticated \
+  --max-instances=3 \
+  --concurrency=20 \
+  --timeout=300 \
   --set-secrets=GEMINI_API_KEY=youngheroes-gemini-api-key:latest \
   --project "$PROJECT_ID"
 

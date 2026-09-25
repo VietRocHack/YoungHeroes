@@ -34,6 +34,9 @@ jobs:
             --source=backend \
             --region="$REGION" \
             --allow-unauthenticated \
+            --max-instances=3 \
+            --concurrency=20 \
+            --timeout=300 \
             --set-secrets=GEMINI_API_KEY=youngheroes-gemini-api-key:latest \
             --project="$PROJECT_ID"
 
@@ -48,6 +51,12 @@ jobs:
         run: |
           npm ci
           npm run build
+        # App Check (docs/adr/0006-abuse-prevention.md) — inert while unset.
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_RECAPTCHA_SITE_KEY: ${{ vars.VITE_RECAPTCHA_SITE_KEY }}
 
       - name: Deploy frontend to Firebase Hosting
         run: |
